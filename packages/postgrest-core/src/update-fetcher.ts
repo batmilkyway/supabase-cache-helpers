@@ -47,25 +47,29 @@ export const buildUpdateFetcher =
   ): Promise<MutationFetcherResponse<R> | null> => {
     const payload = { ...input };
     let filterBuilder = qb.update(payload as any, opts); // todo fix type;
+
     for (const key of primaryKeys) {
       const value = input[key];
       if (!value)
         throw new Error(`Missing value for primary key ${String(key)}`);
       filterBuilder = filterBuilder.eq(key as string, value);
-
       if (stripPrimaryKeys) {
         payload[key] = undefined;
       }
     }
+
     const query = buildNormalizedQuery<Q>(opts);
     if (query) {
-      const { selectQuery, userQueryPaths, paths } = query;
+      const { selectQuery, groupedUserQueryPaths, groupedPaths } = query;
       const { data } = await filterBuilder
         .select(selectQuery)
         .throwOnError()
         .single();
-      return buildMutationFetcherResponse(data as R, { userQueryPaths, paths });
+      return buildMutationFetcherResponse(data as R, {
+        groupedPaths,
+        groupedUserQueryPaths,
+      });
     }
     await filterBuilder.throwOnError().single();
-    return null;
+    return { normalizedData: input as R };
   };
